@@ -26,6 +26,7 @@ import fr.uga.pddl4j.planners.statespace.search.strategy.EnforcedHillClimbing;
 import fr.uga.pddl4j.planners.statespace.search.strategy.GreedyBestFirstSearch;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
 import fr.uga.pddl4j.planners.statespace.search.strategy.StateSpaceStrategy;
+import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 import org.apache.logging.log4j.Logger;
 
@@ -143,5 +144,10 @@ public final class FF extends AbstractStateSpacePlanner {
                 return (SequentialPlan) greedyBestFirstSearch.extractPlan(solutionNode, pb);
             }
         }
+    }
+
+    @Override
+    public Plan[] search(CodedProblem problem, int plans) {
+        return new Plan[0];
     }
 }

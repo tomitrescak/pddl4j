@@ -299,6 +299,11 @@ public abstract class AbstractStateSpaceStrategy implements StateSpaceStrategy {
         return search(codedProblem);
     }
 
+    @Override
+    public Node[] searchSolutionNodes(CodedProblem codedProblem, int max) {
+        return new Node[0];
+    }
+
     /**
      * Search a solution plan to a specified domain and problem.
      *

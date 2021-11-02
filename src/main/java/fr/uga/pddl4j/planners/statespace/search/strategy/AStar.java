@@ -23,14 +23,12 @@ import fr.uga.pddl4j.util.BitState;
 import fr.uga.pddl4j.util.MemoryAgent;
 import fr.uga.pddl4j.util.SolutionEvent;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.PriorityQueue;
+import java.util.*;
 import java.util.concurrent.*;
 
 class Solution {
-    public Node solution;
+    public ArrayList<Node> solutions = new ArrayList<>();
+    public int maxSolutions;
 }
 
 /**
@@ -144,24 +142,26 @@ public final class AStar extends AbstractStateSpaceStrategy {
             executor.execute(() -> {
                 Node result = this.threadSearch(open, openSet, closeSet, codedProblem, heuristic);
                 if (result != null) {
-                    solution.solution = result;
-                    executor.shutdownNow();
-                } else {
-                    this.threadSearch(executor, solution, open, openSet, closeSet, codedProblem, heuristic);
+                    if (solution.solutions.size() == 0 || solution.solutions.stream().allMatch(n -> n.getCost() > result.getCost())) {
+                        solution.solutions.add(result);
+
+                        System.out.println("Found plan with cost: " + result.getCost());
+
+                        if (solution.maxSolutions <= solution.solutions.size()) {
+                            executor.shutdownNow();
+                            return;
+                        }
+                    }
                 }
+                this.threadSearch(executor, solution, open, openSet, closeSet, codedProblem, heuristic);
+
             });
         } catch (RejectedExecutionException ex) {
             System.out.println("Stopping process ...");
         }
     }
 
-    /**
-     * Solves the planning problem and returns the first solution search found.
-     *
-     * @param codedProblem the problem to be solved. The problem cannot be null.
-     * @return a solution search or null if it does not exist.
-     */
-    public Node search(final CodedProblem codedProblem) {
+    public Solution findSolutions(final CodedProblem codedProblem, int max) {
         Objects.requireNonNull(codedProblem);
         final long begin = System.currentTimeMillis();
         final Heuristic heuristic = HeuristicToolKit.createHeuristic(getHeuristicType(), codedProblem);
@@ -176,7 +176,7 @@ public final class AStar extends AbstractStateSpaceStrategy {
         final PriorityBlockingQueue<Node> open = new PriorityBlockingQueue<>(100, new NodeComparator(currWeight));
         // Creates the root node of the tree search
         final Node root = new Node(init, null, -1, 0,
-            heuristic.estimate(init, codedProblem.getGoal()));
+                heuristic.estimate(init, codedProblem.getGoal()));
         // Adds the root to the list of pending nodes
         open.add(root);
         openSet.put(init, root);
@@ -186,16 +186,17 @@ public final class AStar extends AbstractStateSpaceStrategy {
         final ExecutorService executor = Executors.newFixedThreadPool(cores);
         final Solution checkSolution = new Solution();
 
+        checkSolution.maxSolutions = max;
+
         this.resetNodesStatistics();
         Node solution = null;
         final int timeout = getTimeout();
         long time = 0;
+
         // Start of the search
-
-        for (int i=0; i<cores;i++) {
-            this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
-        }
-
+        // for (int i=0; i<cores;i++) {
+        this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
+        // }
 
         try {
             if (executor.awaitTermination(1, TimeUnit.DAYS)) {
@@ -215,6 +216,22 @@ public final class AStar extends AbstractStateSpaceStrategy {
         this.setSearchingTime(time);
 
         // return the search computed or null if no search was found
-        return checkSolution.solution;
+        return checkSolution;
+    }
+
+    /**
+     * Solves the planning problem and returns the first solution search found.
+     *
+     * @param codedProblem the problem to be solved. The problem cannot be null.
+     * @return a solution search or null if it does not exist.
+     */
+    public Node search(final CodedProblem codedProblem) {
+        return this.findSolutions(codedProblem, 1).solutions.get(0);
+    }
+
+    @Override
+    public Node[] searchSolutionNodes(CodedProblem codedProblem, int max) {
+        ArrayList<Node> solutions = this.findSolutions(codedProblem, max).solutions;
+        return solutions.toArray(new Node[solutions.size()]);
     }
 }

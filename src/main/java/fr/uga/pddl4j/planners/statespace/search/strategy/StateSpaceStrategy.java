@@ -164,6 +164,14 @@ public interface StateSpaceStrategy extends Serializable {
      * @param codedProblem the problem to be solved. The problem cannot be null.
      * @return the solution node or null.
      */
+    Node[] searchSolutionNodes(final CodedProblem codedProblem, int max);
+
+    /**
+     * Search a solution node to a specified domain and problem.
+     *
+     * @param codedProblem the problem to be solved. The problem cannot be null.
+     * @return the solution node or null.
+     */
     Node searchSolutionNode(final CodedProblem codedProblem);
 
     /**

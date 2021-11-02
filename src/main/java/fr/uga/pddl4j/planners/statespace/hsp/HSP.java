@@ -25,9 +25,11 @@ import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlanner;
 import fr.uga.pddl4j.planners.statespace.search.strategy.AStar;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
 import fr.uga.pddl4j.planners.statespace.search.strategy.StateSpaceStrategy;
+import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 import org.apache.logging.log4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 /**
@@ -106,6 +108,30 @@ public final class HSP extends AbstractStateSpacePlanner {
         if (solutionNode != null) {
             logger.trace("* A* succeeded\n");
             return (SequentialPlan) astar.extractPlan(solutionNode, problem);
+        } else {
+            logger.trace("* A* failed\n");
+            return null;
+        }
+    }
+
+    @Override
+    public Plan[] search(CodedProblem problem, int plans) {
+        final Logger logger = this.getLogger();
+        Objects.requireNonNull(problem);
+
+        logger.trace("* starting A*\n");
+        final Node[] solutionNodes = astar.searchSolutionNodes(problem, plans);
+        if (isSaveState()) {
+            this.getStatistics().setTimeToSearch(astar.getSearchingTime());
+            this.getStatistics().setMemoryUsedToSearch(astar.getMemoryUsed());
+        }
+        if (solutionNodes != null) {
+            SequentialPlan[] result = new SequentialPlan[solutionNodes.length];
+            for (int i=0; i<result.length;i++) {
+                result[i] = (SequentialPlan) astar.extractPlan(solutionNodes[i], problem);
+            }
+            logger.trace("* A* succeeded\n");
+            return result;
         } else {
             logger.trace("* A* failed\n");
             return null;

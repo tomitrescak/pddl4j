@@ -23,6 +23,7 @@ import fr.uga.pddl4j.encoding.CodedProblem;
 import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlannerAnytime;
 import fr.uga.pddl4j.planners.statespace.search.strategy.AbstractStateSpaceStrategyAnytime;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
+import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 import org.apache.logging.log4j.Logger;
 
@@ -99,5 +100,10 @@ public final class GenericAnytimePlanner extends AbstractStateSpacePlannerAnytim
             logger.trace("* anytime search strategy failed\n");
             return null;
         }
+    }
+
+    @Override
+    public Plan[] search(CodedProblem problem, int plans) {
+        return new Plan[0];
     }
 }

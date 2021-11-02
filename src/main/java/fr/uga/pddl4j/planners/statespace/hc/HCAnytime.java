@@ -24,6 +24,7 @@ import fr.uga.pddl4j.heuristics.relaxation.Heuristic;
 import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlannerAnytime;
 import fr.uga.pddl4j.planners.statespace.search.strategy.HillClimbingAnytime;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
+import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 
 import org.apache.logging.log4j.Logger;
@@ -108,5 +109,10 @@ public class HCAnytime extends AbstractStateSpacePlannerAnytime {
             }
             return hillClimbingAnytime.extractPlan(solution, problem);
         }
+    }
+
+    @Override
+    public Plan[] search(CodedProblem problem, int plans) {
+        return new Plan[0];
     }
 }

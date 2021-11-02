@@ -186,4 +186,9 @@ public final class FFAnytime extends AbstractStateSpacePlannerAnytime {
             }
         }
     }
+
+    @Override
+    public Plan[] search(CodedProblem problem, int plans) {
+        return new Plan[0];
+    }
 }
