@@ -1,0 +1,89 @@
+{
+  // negotiation
+  // - why don't you transport packages from DXB to NYC through AAA
+  "concepts": [
+    {
+      "id": "truck-transport",
+      "parameters": ["packageId"],
+      "bind": ["truckId", "from", "to"],
+      "illocution": "Truck delivery from ?from to ?to",
+      "start": "load-truck !packageId ?truckId ?from",
+      "items": [
+        {
+          "sequence":
+            [
+              "load-truck !packageId !truckId ?from",
+              "drive-Truck !truckId from to city",
+              "unload-truck !packageId !truckId ?to"
+            ],
+          "repeat": "1"
+        }],
+      "goal": "unload-truck !packageId ?truckId ?to"
+    },
+    {
+      "id": "plane-transport",
+      "parameters": ["packageId"],
+      "bind": ["planeId"],
+      "start": "load-airplane !packageId ?planeId locationId",
+      "items": [
+        {
+          "sequence": [
+            "load-airplane !packageId ?planeId location",
+            "fly-airplane ?planeId from to",
+            "unload-airplane !packageId ?planeId location"
+          ],
+          "repeat": "n"
+        },
+        {
+          "action": "truck-transport !packageId"
+        }
+      ],
+      "goal": "unload-airplane !packageId ?planeId ?placeId"
+    },
+    {
+      // one of
+      "id": "airport-traffic",
+      "parameters": ["airportId"],
+      "scenarios": [
+        {
+          "bind": ["truckId"],
+          "start": "unload-truck packageId truckId !airportId",
+          "items": [
+            "unload-truck packageId truckId !airportId"
+          ],
+          "goal": "unload-truck packageId truckId !airportId"
+        },
+        {
+          "bind": ["truckId"],
+          "start": "load-truck packageId truckId !airportId",
+          "items": [
+            "load-truck packageId truckId !airportId"
+          ],
+          "goal": "load-truck packageId truckId !airportId"
+        },
+        {
+          "bind": ["planeId"],
+          "start": "load-airplane !packageId ?planeId locationId",
+          "items": [
+            "load-airplane packageId !planeId !airportId",
+            "unload-airplane packageId !planeId !airportId"
+          ],
+          "goal": "unload-airplane !packageId ?planeId ?placeId"
+        }
+      ]
+
+    },
+
+    {
+      "id": "package-delivery",
+      "bind": ["packageId", "from", "to"],
+      "illocution": "Package delivery ?packageId from ?from to ?to",
+      "start": "load-truck ?packageId truckId ?from",
+      "items": [
+        "truck-transport !packageId",
+        "?plane-transport !packageId"
+      ],
+      "goal": "unload-truck ?packageId truckId ?to"
+    }
+  ]
+}
