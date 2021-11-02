@@ -27,6 +27,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
+import java.util.concurrent.*;
+
+class Solution {
+    public Node solution;
+}
 
 /**
  * This class implements A* search strategy.
@@ -60,46 +65,24 @@ public final class AStar extends AbstractStateSpaceStrategy {
         super(timeout, heuristic, weight);
     }
 
-    /**
-     * Solves the planning problem and returns the first solution search found.
-     *
-     * @param codedProblem the problem to be solved. The problem cannot be null.
-     * @return a solution search or null if it does not exist.
-     */
-    public Node search(final CodedProblem codedProblem) {
-        Objects.requireNonNull(codedProblem);
-        final long begin = System.currentTimeMillis();
-        final Heuristic heuristic = HeuristicToolKit.createHeuristic(getHeuristicType(), codedProblem);
-        // Get the initial state from the planning problem
-        final BitState init = new BitState(codedProblem.getInit());
-        // Initialize the closed list of nodes (store the nodes explored)
-        final Map<BitState, Node> closeSet = new HashMap<>();
-        final Map<BitState, Node> openSet = new HashMap<>();
-        // Initialize the opened list (store the pending node)
-        final double currWeight = getWeight();
-        // The list stores the node ordered according to the A* (getFValue = g + h) function
-        final PriorityQueue<Node> open = new PriorityQueue<>(100, new NodeComparator(currWeight));
-        // Creates the root node of the tree search
-        final Node root = new Node(init, null, -1, 0,
-            heuristic.estimate(init, codedProblem.getGoal()));
-        // Adds the root to the list of pending nodes
-        open.add(root);
-        openSet.put(init, root);
+    private Node threadSearch(PriorityBlockingQueue<Node> open, Map<BitState, Node> openSet, Map<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+        Node current;
 
-        this.resetNodesStatistics();
-        Node solution = null;
-        final int timeout = getTimeout();
-        long time = 0;
-        // Start of the search
-        while (!open.isEmpty() && solution == null && time < timeout) {
-            // Pop the first node in the pending list open
-            final Node current = open.poll();
-            openSet.remove(current);
-            closeSet.put(current, current);
+        current = open.poll();
+        openSet.remove(current);
+        closeSet.put(current, current);
+
+        if (current == null) {
+            // System.out.println("Nothing to satisfy");
+            return null;
+        }
+
+
             // If the goal is satisfy in the current node then extract the search and return it
             if (current.satisfy(codedProblem.getGoal())) {
-                solution = current;
-                fireSolution(new SolutionEvent(this, solution, codedProblem));
+                // checkSolution.solution = current;
+                fireSolution(new SolutionEvent(this, current, codedProblem));
+                return current;
             } else {
                 // Try to apply the operators of the problem to this node
                 int index = 0;
@@ -112,8 +95,8 @@ public final class AStar extends AbstractStateSpaceStrategy {
                         // Test if the condition of the effect is satisfied in the current state
                         // Apply the effect to the successor node
                         op.getCondEffects().stream().filter(ce -> current.satisfy(ce.getCondition())).forEach(ce ->
-                            // Apply the effect to the successor node
-                            state.apply(ce.getEffects())
+                                // Apply the effect to the successor node
+                                state.apply(ce.getEffects())
                         );
                         final double g = current.getCost() + op.getCost();
                         Node result = openSet.get(state);
@@ -133,7 +116,10 @@ public final class AStar extends AbstractStateSpaceStrategy {
                                 state.setCost(g);
                                 state.setParent(current);
                                 state.setOperator(index);
-                                state.setHeuristic(heuristic.estimate(state, codedProblem.getGoal()));
+
+                                synchronized (heuristic) {
+                                    state.setHeuristic(heuristic.estimate(state, codedProblem.getGoal()));
+                                }
                                 state.setDepth(current.getDepth() + 1);
                                 open.add(state);
                                 openSet.put(state, state);
@@ -149,9 +135,79 @@ public final class AStar extends AbstractStateSpaceStrategy {
                     index++;
                 }
             }
-            // Compute the searching time
-            time = System.currentTimeMillis() - begin;
+
+        return null;
+    }
+
+    private void threadSearch(ExecutorService executor, Solution solution, PriorityBlockingQueue<Node> open, Map<BitState, Node> openSet, Map<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+        try {
+            executor.execute(() -> {
+                Node result = this.threadSearch(open, openSet, closeSet, codedProblem, heuristic);
+                if (result != null) {
+                    solution.solution = result;
+                    executor.shutdownNow();
+                } else {
+                    this.threadSearch(executor, solution, open, openSet, closeSet, codedProblem, heuristic);
+                }
+            });
+        } catch (RejectedExecutionException ex) {
+            System.out.println("Stopping process ...");
         }
+    }
+
+    /**
+     * Solves the planning problem and returns the first solution search found.
+     *
+     * @param codedProblem the problem to be solved. The problem cannot be null.
+     * @return a solution search or null if it does not exist.
+     */
+    public Node search(final CodedProblem codedProblem) {
+        Objects.requireNonNull(codedProblem);
+        final long begin = System.currentTimeMillis();
+        final Heuristic heuristic = HeuristicToolKit.createHeuristic(getHeuristicType(), codedProblem);
+        // Get the initial state from the planning problem
+        final BitState init = new BitState(codedProblem.getInit());
+        // Initialize the closed list of nodes (store the nodes explored)
+        final Map<BitState, Node> closeSet = new HashMap<>();
+        final Map<BitState, Node> openSet = new HashMap<>();
+        // Initialize the opened list (store the pending node)
+        final double currWeight = getWeight();
+        // The list stores the node ordered according to the A* (getFValue = g + h) function
+        final PriorityBlockingQueue<Node> open = new PriorityBlockingQueue<>(100, new NodeComparator(currWeight));
+        // Creates the root node of the tree search
+        final Node root = new Node(init, null, -1, 0,
+            heuristic.estimate(init, codedProblem.getGoal()));
+        // Adds the root to the list of pending nodes
+        open.add(root);
+        openSet.put(init, root);
+
+        int cores = Runtime.getRuntime().availableProcessors();
+
+        final ExecutorService executor = Executors.newFixedThreadPool(cores);
+        final Solution checkSolution = new Solution();
+
+        this.resetNodesStatistics();
+        Node solution = null;
+        final int timeout = getTimeout();
+        long time = 0;
+        // Start of the search
+
+        for (int i=0; i<cores;i++) {
+            this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
+        }
+
+
+        try {
+            if (executor.awaitTermination(1, TimeUnit.DAYS)) {
+                System.out.println("Waiting to terminate");
+            } else {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        time = System.currentTimeMillis() - begin;
 
         this.setExploredNodes(closeSet.size());
         this.setPendingNodes(openSet.size());
@@ -159,6 +215,6 @@ public final class AStar extends AbstractStateSpaceStrategy {
         this.setSearchingTime(time);
 
         // return the search computed or null if no search was found
-        return solution;
+        return checkSolution.solution;
     }
 }

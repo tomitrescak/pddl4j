@@ -490,157 +490,170 @@ public class StateSpacePlannerFactory implements Serializable {
 
     public static String plan(AbstractStateSpacePlanner planner, ErrorManager errorManager, ProblemFactory factory, String domainName, String pName, int traceLevel, boolean saveStats) {
 
-
-        // Parses the PDDL domain and problem description
-        long begin = System.currentTimeMillis();
-
-        if (saveStats) {
-            planner.getStatistics().setTimeToParse(System.currentTimeMillis() - begin);
-        }
-        if (!errorManager.isEmpty()) {
-            errorManager.printAll();
-            System.exit(0);
-        } else if (traceLevel > 0 && traceLevel != 8) {
-            StringBuilder strb = new StringBuilder();
-            strb.append("\nparsing domain file \"").append(domainName).append("\" done successfully")
-                    .append("\nparsing problem file \"").append(pName).append("\" done successfully")
-                    .append("\n");
-            LOGGER.trace(strb);
-        }
+        String result = "";
 
 
-        // Encodes and instantiates the problem in a compact representation
-        begin = System.currentTimeMillis();
-        final CodedProblem pb = factory.encode();
-        if (saveStats) {
-            planner.getStatistics().setTimeToEncode(System.currentTimeMillis() - begin);
-            planner.getStatistics().setMemoryUsedForProblemRepresentation(MemoryAgent.getDeepSizeOf(pb));
-        }
 
-        if (pb != null) {
-            planner.getStatistics().setNumberOfActions(pb.getOperators().size());
-            planner.getStatistics().setNumberOfRelevantFluents(pb.getRelevantFacts().size());
-
-            if (traceLevel > 0 && traceLevel != 8) {
-                StringBuilder strb = new StringBuilder();
-                strb.append("\nencoding problem done successfully (")
-                        .append(planner.getStatistics().getNumberOfActions()).append(" ops, ")
-                        .append(planner.getStatistics().getNumberOfRelevantFluents()).append(" facts)\n");
-                LOGGER.trace(strb);
-            }
-
-            if (traceLevel > 0 && traceLevel != 8 && !pb.isSolvable()) {
-                StringBuilder strb = new StringBuilder();
-                strb.append(String.format("goal can be simplified to FALSE. no search will solve it%n%n"));
-                LOGGER.trace(strb);
-                System.exit(0);
-            }
-
-            // Searches for a solution plan
-            final Plan plan = planner.search(pb);
-
-            // Print the results
-            final String problemName = pName.substring(0, pName.indexOf('.'));
-            final int numberOfActions = planner.getStatistics().getNumberOfActions();
-            final int numberOfFluents = planner.getStatistics().getNumberOfRelevantFluents();
-            double timeToParseInSeconds = 0.0;
-            double timeToEncodeInSeconds = 0.0;
-            double timeToSearchInSeconds = 0.0;
-            double totalTimeInSeconds = 0.0;
-            double memoryForProblemInMBytes = 0.0;
-            double memoryUsedToSearchInMBytes = 0.0;
-            double totalMemoryInMBytes = 0.0;
+            // Parses the PDDL domain and problem description
+            long begin = System.currentTimeMillis();
 
             if (saveStats) {
-                timeToParseInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToParse());
-                timeToEncodeInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToEncode());
-                timeToSearchInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToSearch());
-                totalTimeInSeconds = timeToParseInSeconds + timeToEncodeInSeconds + timeToSearchInSeconds;
-
-                memoryUsedToSearchInMBytes = Statistics.byteToMByte(planner.getStatistics()
-                        .getMemoryUsedToSearch());
-                memoryForProblemInMBytes =
-                        Statistics.byteToMByte(planner.getStatistics().getMemoryUsedForProblemRepresentation());
-                totalMemoryInMBytes = memoryForProblemInMBytes + memoryUsedToSearchInMBytes;
+                planner.getStatistics().setTimeToParse(System.currentTimeMillis() - begin);
             }
-
-            if (traceLevel > 0 && traceLevel != 8) {
-                final StringBuilder strb = new StringBuilder();
-                if (plan != null) {
-                    strb.append(String.format("%nfound plan as follows:%n%n"));
-                    if (ACTION_COST) {
-                        strb.append(pb.toStringCost(plan));
-                    } else {
-                        strb.append(pb.toString(plan));
-                    }
-
-                    strb.append(String.format("%nplan total cost: %4.2f%n%n", plan.cost()));
-
-                } else {
-                    strb.append(String.format("%nno plan found%n%n"));
-                }
-                if (saveStats) {
-                    strb.append(String.format("%ntime spent:   %8.2f seconds parsing %n", timeToParseInSeconds));
-                    strb.append(String.format("              %8.2f seconds encoding %n", timeToEncodeInSeconds));
-                    strb.append(String.format("              %8.2f seconds searching%n", timeToSearchInSeconds));
-                    strb.append(String.format("              %8.2f seconds total time%n", totalTimeInSeconds));
-
-                    strb.append(String.format("%nmemory used:  %8.2f MBytes for problem representation%n",
-                            memoryForProblemInMBytes));
-                    strb.append(String.format("              %8.2f MBytes for searching%n",
-                            memoryUsedToSearchInMBytes));
-                    strb.append(String.format("              %8.2f MBytes total%n%n%n", totalMemoryInMBytes));
-                }
-
-                //org.apache.logging.log4j.Logger.getRootLogger().setLevel(
-                //        org.apache.log4j.Level.DEBUG);
-                // System.out.println(strb);
-
-                //LOGGER.setLevel();
-
-                LOGGER.debug(strb);
-            } else if (traceLevel == 8) {
-                final StringBuilder strb = new StringBuilder();
-                if (plan != null) {
-                    strb.append(String.format("%5s %8d %8d %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %5d%n",
-                            problemName,
-                            numberOfActions,
-                            numberOfFluents,
-                            timeToParseInSeconds,
-                            timeToEncodeInSeconds,
-                            timeToSearchInSeconds,
-                            totalTimeInSeconds,
-                            memoryForProblemInMBytes,
-                            memoryUsedToSearchInMBytes,
-                            totalMemoryInMBytes,
-                            plan.size()));
-                } else {
-                    strb.append(String.format("%5s %8d %8d %8.2f %8.2f %8s %8s %8.2f %8s %8s %5s%n",
-                            pName,
-                            numberOfActions,
-                            numberOfFluents,
-                            timeToParseInSeconds,
-                            timeToEncodeInSeconds,
-                            "--",
-                            "--",
-                            memoryForProblemInMBytes,
-                            "--",
-                            "--",
-                            "--"));
-                }
+            if (!errorManager.isEmpty()) {
+                errorManager.printAll();
+                System.exit(0);
+            } else if (traceLevel > 0 && traceLevel != 8) {
+                StringBuilder strb = new StringBuilder();
+                strb.append("\nparsing domain file \"").append(domainName).append("\" done successfully")
+                        .append("\nparsing problem file \"").append(pName).append("\" done successfully")
+                        .append("\n");
                 LOGGER.trace(strb);
             }
 
-            if (ACTION_COST) {
-                return pb.toStringCost(plan);
-            } else {
-                return pb.toString(plan);
-            }
-        } else {
-            LOGGER.trace("encoding problem failed");
-        }
 
-        return null;
+            // Encodes and instantiates the problem in a compact representation
+            begin = System.currentTimeMillis();
+            final CodedProblem pb = factory.encode();
+            if (saveStats) {
+                planner.getStatistics().setTimeToEncode(System.currentTimeMillis() - begin);
+                planner.getStatistics().setMemoryUsedForProblemRepresentation(MemoryAgent.getDeepSizeOf(pb));
+            }
+
+            if (pb != null) {
+                planner.getStatistics().setNumberOfActions(pb.getOperators().size());
+                planner.getStatistics().setNumberOfRelevantFluents(pb.getRelevantFacts().size());
+
+                if (traceLevel > 0 && traceLevel != 8) {
+                    StringBuilder strb = new StringBuilder();
+                    strb.append("\nencoding problem done successfully (")
+                            .append(planner.getStatistics().getNumberOfActions()).append(" ops, ")
+                            .append(planner.getStatistics().getNumberOfRelevantFluents()).append(" facts)\n");
+                    LOGGER.trace(strb);
+                }
+
+                if (traceLevel > 0 && traceLevel != 8 && !pb.isSolvable()) {
+                    StringBuilder strb = new StringBuilder();
+                    strb.append(String.format("goal can be simplified to FALSE. no search will solve it%n%n"));
+                    LOGGER.trace(strb);
+                    System.exit(0);
+                }
+
+                // Searches for a solution plan
+                Plan plan = null;
+
+                for (int i=0; i<10; i++) {
+                    plan = planner.search(pb);
+
+                    System.out.println(("Plan: " + i + " cost: " + plan.cost()));
+                    System.out.println(pb.toStringCost(plan));
+
+
+                }
+
+                // Print the results
+                final String problemName = pName.substring(0, pName.indexOf('.'));
+                final int numberOfActions = planner.getStatistics().getNumberOfActions();
+                final int numberOfFluents = planner.getStatistics().getNumberOfRelevantFluents();
+                double timeToParseInSeconds = 0.0;
+                double timeToEncodeInSeconds = 0.0;
+                double timeToSearchInSeconds = 0.0;
+                double totalTimeInSeconds = 0.0;
+                double memoryForProblemInMBytes = 0.0;
+                double memoryUsedToSearchInMBytes = 0.0;
+                double totalMemoryInMBytes = 0.0;
+
+                if (saveStats) {
+                    timeToParseInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToParse());
+                    timeToEncodeInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToEncode());
+                    timeToSearchInSeconds = Statistics.millisecondToSecond(planner.getStatistics().getTimeToSearch());
+                    totalTimeInSeconds = timeToParseInSeconds + timeToEncodeInSeconds + timeToSearchInSeconds;
+
+                    memoryUsedToSearchInMBytes = Statistics.byteToMByte(planner.getStatistics()
+                            .getMemoryUsedToSearch());
+                    memoryForProblemInMBytes =
+                            Statistics.byteToMByte(planner.getStatistics().getMemoryUsedForProblemRepresentation());
+                    totalMemoryInMBytes = memoryForProblemInMBytes + memoryUsedToSearchInMBytes;
+                }
+
+                if (traceLevel > 0 && traceLevel != 8) {
+                    final StringBuilder strb = new StringBuilder();
+                    if (plan != null) {
+                        strb.append(String.format("%nfound plan as follows:%n%n"));
+                        if (ACTION_COST) {
+                            strb.append(pb.toStringCost(plan));
+                        } else {
+                            strb.append(pb.toString(plan));
+                        }
+
+                        strb.append(String.format("%nplan total cost: %4.2f%n%n", plan.cost()));
+
+                    } else {
+                        strb.append(String.format("%nno plan found%n%n"));
+                    }
+                    if (saveStats) {
+                        strb.append(String.format("%ntime spent:   %8.2f seconds parsing %n", timeToParseInSeconds));
+                        strb.append(String.format("              %8.2f seconds encoding %n", timeToEncodeInSeconds));
+                        strb.append(String.format("              %8.2f seconds searching%n", timeToSearchInSeconds));
+                        strb.append(String.format("              %8.2f seconds total time%n", totalTimeInSeconds));
+
+                        strb.append(String.format("%nmemory used:  %8.2f MBytes for problem representation%n",
+                                memoryForProblemInMBytes));
+                        strb.append(String.format("              %8.2f MBytes for searching%n",
+                                memoryUsedToSearchInMBytes));
+                        strb.append(String.format("              %8.2f MBytes total%n%n%n", totalMemoryInMBytes));
+                    }
+
+                    //org.apache.logging.log4j.Logger.getRootLogger().setLevel(
+                    //        org.apache.log4j.Level.DEBUG);
+                    // System.out.println(strb);
+
+                    //LOGGER.setLevel();
+
+                    LOGGER.debug(strb);
+                } else if (traceLevel == 8) {
+                    final StringBuilder strb = new StringBuilder();
+                    if (plan != null) {
+                        strb.append(String.format("%5s %8d %8d %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %8.2f %5d%n",
+                                problemName,
+                                numberOfActions,
+                                numberOfFluents,
+                                timeToParseInSeconds,
+                                timeToEncodeInSeconds,
+                                timeToSearchInSeconds,
+                                totalTimeInSeconds,
+                                memoryForProblemInMBytes,
+                                memoryUsedToSearchInMBytes,
+                                totalMemoryInMBytes,
+                                plan.size()));
+                    } else {
+                        strb.append(String.format("%5s %8d %8d %8.2f %8.2f %8s %8s %8.2f %8s %8s %5s%n",
+                                pName,
+                                numberOfActions,
+                                numberOfFluents,
+                                timeToParseInSeconds,
+                                timeToEncodeInSeconds,
+                                "--",
+                                "--",
+                                memoryForProblemInMBytes,
+                                "--",
+                                "--",
+                                "--"));
+                    }
+                    LOGGER.trace(strb);
+                }
+
+                if (ACTION_COST) {
+                    result =  pb.toStringCost(plan);
+                } else {
+                    result =  pb.toString(plan);
+                }
+            } else {
+                LOGGER.trace("encoding problem failed");
+            }
+
+
+        return result;
 
     }
 }

@@ -473,104 +473,106 @@ public abstract class RelaxedGraphHeuristic extends AbstractHeuristic {
      * @see FastForward
      */
     protected final int getRelaxedPlanValue() {
-        // The integer used to counter the number of actions of the relaxed plan
-        int value = 0;
 
-        // We initialize the for each level of the graph the goal to reach
-        final BitExp[] goals = new BitExp[this.level + 1];
-        for (int k = 0; k <= this.level; k++) {
-            goals[k] = new BitExp();
-        }
-        final BitVector pGoal = super.getGoal().getPositive();
-        final BitVector nGoal = super.getGoal().getNegative();
-        for (int g = pGoal.nextSetBit(0); g >= 0; g = pGoal.nextSetBit(g + 1)) {
-            goals[this.pPropLevel[g]].getPositive().set(g);
-        }
-        for (int g = nGoal.nextSetBit(0); g >= 0; g = nGoal.nextSetBit(g + 1)) {
-            goals[this.nPropLevel[g]].getNegative().set(g);
-        }
+            // The integer used to counter the number of actions of the relaxed plan
+            int value = 0;
 
-        // We start the extraction of the relaxed plan
-        for (int k = level; k > 0; k--) {
-            // goals at level k
-            final BitExp gk = goals[k];
-            final BitVector pGk = gk.getPositive();
-            final BitVector nGk = gk.getNegative();
-            // goals at level k - 1
-            final BitExp gk1 = goals[k - 1];
-            final BitVector pGk1 = gk1.getPositive();
-            final BitVector nGk1 = gk1.getNegative();
-            // Each positive goal at level k we need to find a resolver to support it
-            for (int pg = pGk.nextSetBit(0); pg >= 0; pg = pGk.nextSetBit(pg + 1)) {
-                // Select the best resolver according to the difficulty heuristic
-                final int resolverIndex = this.select(this.effectsEdges[pg].getPositive(), k);
-                if (resolverIndex != -1) {
-                    final BitExp pre = this.preconditions[resolverIndex];
-                    final BitVector pPre = pre.getPositive();
-                    for (int p = pPre.nextSetBit(0); p >= 0; p = pPre.nextSetBit(p + 1)) {
-                        final int pLevel = this.pPropLevel[p];
-                        if (pLevel != 0 && !pGk1.get(p)) {
-                            goals[pLevel].getPositive().set(p);
+            // We initialize the for each level of the graph the goal to reach
+            final BitExp[] goals = new BitExp[this.level + 1];
+            for (int k = 0; k <= this.level; k++) {
+                goals[k] = new BitExp();
+            }
+            final BitVector pGoal = super.getGoal().getPositive();
+            final BitVector nGoal = super.getGoal().getNegative();
+            for (int g = pGoal.nextSetBit(0); g >= 0; g = pGoal.nextSetBit(g + 1)) {
+                goals[this.pPropLevel[g]].getPositive().set(g);
+            }
+            for (int g = nGoal.nextSetBit(0); g >= 0; g = nGoal.nextSetBit(g + 1)) {
+                goals[this.nPropLevel[g]].getNegative().set(g);
+            }
+
+            // We start the extraction of the relaxed plan
+            for (int k = level; k > 0; k--) {
+                // goals at level k
+                final BitExp gk = goals[k];
+                final BitVector pGk = gk.getPositive();
+                final BitVector nGk = gk.getNegative();
+                // goals at level k - 1
+                final BitExp gk1 = goals[k - 1];
+                final BitVector pGk1 = gk1.getPositive();
+                final BitVector nGk1 = gk1.getNegative();
+                // Each positive goal at level k we need to find a resolver to support it
+                for (int pg = pGk.nextSetBit(0); pg >= 0; pg = pGk.nextSetBit(pg + 1)) {
+                    // Select the best resolver according to the difficulty heuristic
+                    final int resolverIndex = this.select(this.effectsEdges[pg].getPositive(), k);
+                    if (resolverIndex != -1) {
+                        final BitExp pre = this.preconditions[resolverIndex];
+                        final BitVector pPre = pre.getPositive();
+                        for (int p = pPre.nextSetBit(0); p >= 0; p = pPre.nextSetBit(p + 1)) {
+                            final int pLevel = this.pPropLevel[p];
+                            if (pLevel != 0 && !pGk1.get(p)) {
+                                goals[pLevel].getPositive().set(p);
+                            }
                         }
-                    }
-                    final BitVector nPre = pre.getNegative();
-                    for (int p = nPre.nextSetBit(0); p >= 0; p = nPre.nextSetBit(p + 1)) {
-                        final int pLevel = this.nPropLevel[p];
-                        if (pLevel != 0 && !nGk1.get(p)) {
-                            goals[pLevel].getNegative().set(p);
+                        final BitVector nPre = pre.getNegative();
+                        for (int p = nPre.nextSetBit(0); p >= 0; p = nPre.nextSetBit(p + 1)) {
+                            final int pLevel = this.nPropLevel[p];
+                            if (pLevel != 0 && !nGk1.get(p)) {
+                                goals[pLevel].getNegative().set(p);
+                            }
                         }
+                        // Get the effects of the operator marked them as true
+                        final BitExp effect = this.effects[resolverIndex];
+                        final BitVector pEffect = effect.getPositive();
+                        final BitVector nEffect = effect.getNegative();
+                        pGk1.andNot(pEffect);
+                        nGk1.andNot(nEffect);
+                        pGk.andNot(pEffect);
+                        nGk.andNot(nEffect);
+                        // We increment the number of action of the relaxed plan
+                        value += this.getOperators().get(resolverIndex).getCost();
+                    } else { // NOOP case
+                        pGk1.clear(pg);
+                        pGk.clear(pg);
                     }
-                    // Get the effects of the operator marked them as true
-                    final BitExp effect = this.effects[resolverIndex];
-                    final BitVector pEffect = effect.getPositive();
-                    final BitVector nEffect = effect.getNegative();
-                    pGk1.andNot(pEffect);
-                    nGk1.andNot(nEffect);
-                    pGk.andNot(pEffect);
-                    nGk.andNot(nEffect);
-                    // We increment the number of action of the relaxed plan
-                    value += this.getOperators().get(resolverIndex).getCost();
-                } else { // NOOP case
-                    pGk1.clear(pg);
-                    pGk.clear(pg);
+                }
+                // Each negative goal at level k we need to find a resolver to support it
+                for (int ng = nGk.nextSetBit(0); ng >= 0; ng = nGk.nextSetBit(ng + 1)) {
+                    final int resolverIndex = this.select(this.effectsEdges[ng].getNegative(), k);
+                    if (resolverIndex != -1) {
+                        final BitExp pre = this.preconditions[resolverIndex];
+                        final BitVector pPre = pre.getPositive();
+                        for (int p = pPre.nextSetBit(0); p >= 0; p = pPre.nextSetBit(p + 1)) {
+                            final int pLevel = this.pPropLevel[p];
+                            if (pLevel != 0 && !pGk1.get(p)) {
+                                goals[pLevel].getPositive().set(p);
+                            }
+                        }
+                        final BitVector nPre = pre.getNegative();
+                        for (int p = nPre.nextSetBit(0); p >= 0; p = nPre.nextSetBit(p + 1)) {
+                            final int pLevel = this.nPropLevel[p];
+                            if (pLevel != 0 && !nGk1.get(p)) {
+                                goals[pLevel].getNegative().set(p);
+                            }
+                        }
+                        // Get the effects of the operator marked them as true
+                        final BitExp effect = this.effects[resolverIndex];
+                        final BitVector pEffect = effect.getPositive();
+                        final BitVector nEffect = effect.getNegative();
+                        pGk1.andNot(pEffect);
+                        nGk1.andNot(nEffect);
+                        pGk.andNot(pEffect);
+                        nGk.andNot(nEffect);
+                        // We increment the number of action of the relaxed plan
+                        value += this.getOperators().get(resolverIndex).getCost();
+                    } else { // NOOP case
+                        nGk1.set(ng);
+                        nGk.clear(ng);
+                    }
                 }
             }
-            // Each negative goal at level k we need to find a resolver to support it
-            for (int ng = nGk.nextSetBit(0); ng >= 0; ng = nGk.nextSetBit(ng + 1)) {
-                final int resolverIndex = this.select(this.effectsEdges[ng].getNegative(), k);
-                if (resolverIndex != -1) {
-                    final BitExp pre = this.preconditions[resolverIndex];
-                    final BitVector pPre = pre.getPositive();
-                    for (int p = pPre.nextSetBit(0); p >= 0; p = pPre.nextSetBit(p + 1)) {
-                        final int pLevel = this.pPropLevel[p];
-                        if (pLevel != 0 && !pGk1.get(p)) {
-                            goals[pLevel].getPositive().set(p);
-                        }
-                    }
-                    final BitVector nPre = pre.getNegative();
-                    for (int p = nPre.nextSetBit(0); p >= 0; p = nPre.nextSetBit(p + 1)) {
-                        final int pLevel = this.nPropLevel[p];
-                        if (pLevel != 0 && !nGk1.get(p)) {
-                            goals[pLevel].getNegative().set(p);
-                        }
-                    }
-                    // Get the effects of the operator marked them as true
-                    final BitExp effect = this.effects[resolverIndex];
-                    final BitVector pEffect = effect.getPositive();
-                    final BitVector nEffect = effect.getNegative();
-                    pGk1.andNot(pEffect);
-                    nGk1.andNot(nEffect);
-                    pGk.andNot(pEffect);
-                    nGk.andNot(nEffect);
-                    // We increment the number of action of the relaxed plan
-                    value += this.getOperators().get(resolverIndex).getCost();
-                } else { // NOOP case
-                    nGk1.set(ng);
-                    nGk.clear(ng);
-                }
-            }
-        }
-        return value;
+            return value;
+
     }
 
     /**
