@@ -23,7 +23,6 @@ import fr.uga.pddl4j.encoding.CodedProblem;
 import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlanner;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
 import fr.uga.pddl4j.planners.statespace.search.strategy.StateSpaceStrategy;
-import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 import org.apache.logging.log4j.Logger;
 
@@ -99,10 +98,5 @@ public final class GenericPlanner extends AbstractStateSpacePlanner {
             logger.trace("* search strategy failed\n");
             return null;
         }
-    }
-
-    @Override
-    public Plan[] search(CodedProblem problem, int plans) {
-        return new Plan[0];
     }
 }

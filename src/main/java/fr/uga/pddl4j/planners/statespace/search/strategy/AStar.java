@@ -46,7 +46,6 @@ public final class AStar extends AbstractStateSpaceStrategy {
 
     /**
      * Creates a new AStar search strategy with default parameters.
-     *
      */
     public AStar() {
         super();
@@ -63,94 +62,94 @@ public final class AStar extends AbstractStateSpaceStrategy {
         super(timeout, heuristic, weight);
     }
 
-    private Node threadSearch(PriorityBlockingQueue<Node> open, Map<BitState, Node> openSet, Map<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+    private Node threadSearch(PriorityBlockingQueue<Node> open, ConcurrentHashMap<BitState, Node> openSet, ConcurrentHashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
         Node current;
-
         current = open.poll();
-        openSet.remove(current);
-        closeSet.put(current, current);
 
         if (current == null) {
             // System.out.println("Nothing to satisfy");
             return null;
         }
 
+        openSet.remove(current);
+        closeSet.put(current, current);
 
-            // If the goal is satisfy in the current node then extract the search and return it
-            if (current.satisfy(codedProblem.getGoal())) {
-                // checkSolution.solution = current;
-                fireSolution(new SolutionEvent(this, current, codedProblem));
-                return current;
-            } else {
-                // Try to apply the operators of the problem to this node
-                int index = 0;
-                for (BitOp op : codedProblem.getOperators()) {
-                    // Test if a specified operator is applicable in the current state
-                    if (op.isApplicable(current)) {
-                        Node state = new Node(current);
-                        this.setCreatedNodes(this.getCreatedNodes() + 1);
-                        // Apply the effect of the applicable operator
-                        // Test if the condition of the effect is satisfied in the current state
-                        // Apply the effect to the successor node
-                        op.getCondEffects().stream().filter(ce -> current.satisfy(ce.getCondition())).forEach(ce ->
-                                // Apply the effect to the successor node
-                                state.apply(ce.getEffects())
-                        );
-                        final double g = current.getCost() + op.getCost();
-                        Node result = openSet.get(state);
-                        if (result == null) {
-                            result = closeSet.get(state);
-                            if (result != null) {
-                                if (g < result.getCost()) {
-                                    result.setCost(g);
-                                    result.setParent(current);
-                                    result.setOperator(index);
-                                    result.setDepth(current.getDepth() + 1);
-                                    open.add(result);
-                                    openSet.put(result, result);
-                                    closeSet.remove(result);
-                                }
-                            } else {
-                                state.setCost(g);
-                                state.setParent(current);
-                                state.setOperator(index);
-
-                                synchronized (heuristic) {
-                                    state.setHeuristic(heuristic.estimate(state, codedProblem.getGoal()));
-                                }
-                                state.setDepth(current.getDepth() + 1);
-                                open.add(state);
-                                openSet.put(state, state);
+        // If the goal is satisfy in the current node then extract the search and return it
+        if (current.satisfy(codedProblem.getGoal())) {
+            // checkSolution.solution = current;
+            fireSolution(new SolutionEvent(this, current, codedProblem));
+            return current;
+        } else {
+            // Try to apply the operators of the problem to this node
+            int index = 0;
+            for (BitOp op : codedProblem.getOperators()) {
+                // Test if a specified operator is applicable in the current state
+                if (op.isApplicable(current)) {
+                    Node state = new Node(current);
+                    this.setCreatedNodes(this.getCreatedNodes() + 1);
+                    // Apply the effect of the applicable operator
+                    // Test if the condition of the effect is satisfied in the current state
+                    // Apply the effect to the successor node
+                    op.getCondEffects().stream().filter(ce -> current.satisfy(ce.getCondition())).forEach(ce ->
+                            // Apply the effect to the successor node
+                            state.apply(ce.getEffects())
+                    );
+                    final double g = current.getCost() + op.getCost();
+                    Node result = openSet.get(state);
+                    if (result == null) {
+                        result = closeSet.get(state);
+                        if (result != null) {
+                            if (g < result.getCost()) {
+                                result.setCost(g);
+                                result.setParent(current);
+                                result.setOperator(index);
+                                result.setDepth(current.getDepth() + 1);
+                                open.add(result);
+                                openSet.put(result, result);
+                                closeSet.remove(result);
                             }
-                        } else if (g < result.getCost()) {
-                            result.setCost(g);
-                            result.setParent(current);
-                            result.setOperator(index);
-                            result.setDepth(current.getDepth() + 1);
-                        }
+                        } else {
+                            state.setCost(g);
+                            state.setParent(current);
+                            state.setOperator(index);
 
+                            synchronized (heuristic) {
+                                state.setHeuristic(heuristic.estimate(state, codedProblem.getGoal()));
+                            }
+                            state.setDepth(current.getDepth() + 1);
+                            open.add(state);
+                            openSet.put(state, state);
+                        }
+                    } else if (g < result.getCost()) {
+                        result.setCost(g);
+                        result.setParent(current);
+                        result.setOperator(index);
+                        result.setDepth(current.getDepth() + 1);
                     }
-                    index++;
+
                 }
+                index++;
             }
+        }
 
         return null;
     }
 
-    private void threadSearch(ExecutorService executor, Solution solution, PriorityBlockingQueue<Node> open, Map<BitState, Node> openSet, Map<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+    private void threadSearch(ExecutorService executor, Solution solution, PriorityBlockingQueue<Node> open, ConcurrentHashMap<BitState, Node> openSet, ConcurrentHashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
         try {
             executor.execute(() -> {
                 Node result = this.threadSearch(open, openSet, closeSet, codedProblem, heuristic);
                 if (result != null) {
+                    synchronized (solution) {
+                    // add only better solutions
                     if (solution.solutions.size() == 0 || solution.solutions.stream().allMatch(n -> n.getCost() > result.getCost())) {
                         solution.solutions.add(result);
-
                         System.out.println("Found plan with cost: " + result.getCost());
-
                         if (solution.maxSolutions <= solution.solutions.size()) {
                             executor.shutdownNow();
                             return;
                         }
+                    }
                     }
                 }
                 this.threadSearch(executor, solution, open, openSet, closeSet, codedProblem, heuristic);
@@ -161,15 +160,25 @@ public final class AStar extends AbstractStateSpaceStrategy {
         }
     }
 
-    public Solution findSolutions(final CodedProblem codedProblem, int max) {
+    public Node search(final CodedProblem codedProblem) {
+        return this.findSolution(codedProblem, 1).solutions.get(0);
+    }
+
+    /**
+     * Solves the planning problem and returns the first solution search found.
+     *
+     * @param codedProblem the problem to be solved. The problem cannot be null.
+     * @return a solution search or null if it does not exist.
+     */
+    public Solution findSolution(final CodedProblem codedProblem, int maxSolutions) {
         Objects.requireNonNull(codedProblem);
         final long begin = System.currentTimeMillis();
         final Heuristic heuristic = HeuristicToolKit.createHeuristic(getHeuristicType(), codedProblem);
         // Get the initial state from the planning problem
         final BitState init = new BitState(codedProblem.getInit());
         // Initialize the closed list of nodes (store the nodes explored)
-        final Map<BitState, Node> closeSet = new HashMap<>();
-        final Map<BitState, Node> openSet = new HashMap<>();
+        final ConcurrentHashMap<BitState, Node> closeSet = new ConcurrentHashMap<>();
+        final ConcurrentHashMap<BitState, Node> openSet = new ConcurrentHashMap<>();
         // Initialize the opened list (store the pending node)
         final double currWeight = getWeight();
         // The list stores the node ordered according to the A* (getFValue = g + h) function
@@ -181,22 +190,21 @@ public final class AStar extends AbstractStateSpaceStrategy {
         open.add(root);
         openSet.put(init, root);
 
-        int cores = Runtime.getRuntime().availableProcessors();
+        int cores = 4; // Runtime.getRuntime().availableProcessors();
 
         final ExecutorService executor = Executors.newFixedThreadPool(cores);
         final Solution checkSolution = new Solution();
-
-        checkSolution.maxSolutions = max;
+        checkSolution.maxSolutions  = maxSolutions;
 
         this.resetNodesStatistics();
         Node solution = null;
         final int timeout = getTimeout();
         long time = 0;
-
         // Start of the search
-        // for (int i=0; i<cores;i++) {
-        this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
-        // }
+
+        for (int i = 0; i < cores; i++) {
+            this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
+        }
 
         try {
             if (executor.awaitTermination(1, TimeUnit.DAYS)) {
@@ -219,19 +227,9 @@ public final class AStar extends AbstractStateSpaceStrategy {
         return checkSolution;
     }
 
-    /**
-     * Solves the planning problem and returns the first solution search found.
-     *
-     * @param codedProblem the problem to be solved. The problem cannot be null.
-     * @return a solution search or null if it does not exist.
-     */
-    public Node search(final CodedProblem codedProblem) {
-        return this.findSolutions(codedProblem, 1).solutions.get(0);
-    }
-
     @Override
-    public Node[] searchSolutionNodes(CodedProblem codedProblem, int max) {
-        ArrayList<Node> solutions = this.findSolutions(codedProblem, max).solutions;
-        return solutions.toArray(new Node[solutions.size()]);
+    public Node[] search(final CodedProblem codedProblem, int max) {
+        var solutions = this.findSolution(codedProblem, max);
+        return solutions.solutions.toArray(new Node[solutions.solutions.size()]);
     }
 }

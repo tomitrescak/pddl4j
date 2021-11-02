@@ -15,8 +15,10 @@
 
 package fr.uga.pddl4j.planners.statespace;
 
+import fr.uga.pddl4j.encoding.CodedProblem;
 import fr.uga.pddl4j.planners.AbstractPlanner;
 import fr.uga.pddl4j.planners.statespace.search.strategy.StateSpaceStrategy;
+import fr.uga.pddl4j.util.SequentialPlan;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -94,5 +96,9 @@ public abstract class AbstractStateSpacePlanner extends AbstractPlanner implemen
     @Override
     public boolean isAnytime() {
         return anytime;
+    }
+
+    public SequentialPlan[] search(CodedProblem problem, int plans) {
+        return null;
     }
 }

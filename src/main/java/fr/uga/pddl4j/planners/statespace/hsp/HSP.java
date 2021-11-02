@@ -25,11 +25,9 @@ import fr.uga.pddl4j.planners.statespace.AbstractStateSpacePlanner;
 import fr.uga.pddl4j.planners.statespace.search.strategy.AStar;
 import fr.uga.pddl4j.planners.statespace.search.strategy.Node;
 import fr.uga.pddl4j.planners.statespace.search.strategy.StateSpaceStrategy;
-import fr.uga.pddl4j.util.Plan;
 import fr.uga.pddl4j.util.SequentialPlan;
 import org.apache.logging.log4j.Logger;
 
-import java.util.ArrayList;
 import java.util.Objects;
 
 /**
@@ -115,12 +113,12 @@ public final class HSP extends AbstractStateSpacePlanner {
     }
 
     @Override
-    public Plan[] search(CodedProblem problem, int plans) {
+    public SequentialPlan[] search(CodedProblem problem, int plans) {
         final Logger logger = this.getLogger();
         Objects.requireNonNull(problem);
 
         logger.trace("* starting A*\n");
-        final Node[] solutionNodes = astar.searchSolutionNodes(problem, plans);
+        final Node[] solutionNodes =  astar.searchSolutionNode(problem, plans);
         if (isSaveState()) {
             this.getStatistics().setTimeToSearch(astar.getSearchingTime());
             this.getStatistics().setMemoryUsedToSearch(astar.getMemoryUsed());
@@ -137,4 +135,5 @@ public final class HSP extends AbstractStateSpacePlanner {
             return null;
         }
     }
+
 }

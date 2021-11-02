@@ -299,9 +299,16 @@ public abstract class AbstractStateSpaceStrategy implements StateSpaceStrategy {
         return search(codedProblem);
     }
 
+    /**
+     * Search a solution node to a specified domain and problem.
+     *
+     * @param codedProblem the problem to be solved. The problem cannot be null.
+     * @return the solution node or null.
+     */
     @Override
-    public Node[] searchSolutionNodes(CodedProblem codedProblem, int max) {
-        return new Node[0];
+    public Node[] searchSolutionNode(final CodedProblem codedProblem, int max) {
+        Objects.requireNonNull(codedProblem);
+        return search(codedProblem, max);
     }
 
     /**
@@ -386,5 +393,10 @@ public abstract class AbstractStateSpaceStrategy implements StateSpaceStrategy {
                 ((SolutionListener) listeners[i + 1]).newSolutionFound(evt);
             }
         }
+    }
+
+    @Override
+    public Node[] search(final CodedProblem codedProblem, int max) {
+        return new Node[] { this.search(codedProblem) };
     }
 }

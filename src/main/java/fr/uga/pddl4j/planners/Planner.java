@@ -130,14 +130,6 @@ public interface Planner extends Serializable {
     Plan search(final CodedProblem problem);
 
     /**
-     * Search a plan for the specified planning problem.
-     *
-     * @param problem the problem to be solved. The problem cannot be null.
-     * @return the solution plan or null is no solution was found.
-     */
-    Plan[] search(final CodedProblem problem, int plans);
-
-    /**
      * Returns the statistics of the planner.
      *
      * @return the statistics of the planner.

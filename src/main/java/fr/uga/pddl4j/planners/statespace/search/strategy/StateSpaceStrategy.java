@@ -158,13 +158,7 @@ public interface StateSpaceStrategy extends Serializable {
      */
     Node search(final CodedProblem codedProblem);
 
-    /**
-     * Search a solution node to a specified domain and problem.
-     *
-     * @param codedProblem the problem to be solved. The problem cannot be null.
-     * @return the solution node or null.
-     */
-    Node[] searchSolutionNodes(final CodedProblem codedProblem, int max);
+    Node[] search(final CodedProblem codedProblem, int max);
 
     /**
      * Search a solution node to a specified domain and problem.
@@ -173,6 +167,8 @@ public interface StateSpaceStrategy extends Serializable {
      * @return the solution node or null.
      */
     Node searchSolutionNode(final CodedProblem codedProblem);
+
+    Node[] searchSolutionNode(final CodedProblem codedProblem, int max);
 
     /**
      * Search a solution plan to a specified domain and problem.

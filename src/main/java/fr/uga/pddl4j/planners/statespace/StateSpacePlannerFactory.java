@@ -540,14 +540,18 @@ public class StateSpacePlannerFactory implements Serializable {
                 }
 
                 // Searches for a solution plan
-//                Plan plan = planner.search(pb);
-
                 Plan[] plans = planner.search(pb, 3);
-                for (int i=0; i<plans.length; i++) {
-                    System.out.println(("Plan: " + i + " cost: " + plans[i].cost()));
-                    System.out.println(pb.toStringCost(plans[i]));
-                }
+
                 Plan plan = plans[0];
+
+//                for (int i=0; i<plans.length; i++) {
+//                    plan = planner.search(pb);
+//
+//                    System.out.println(("Plan: " + i + " cost: " + plan.cost()));
+//                    System.out.println(pb.toStringCost(plan));
+//
+//
+//                }
 
                 // Print the results
                 final String problemName = pName.substring(0, pName.indexOf('.'));

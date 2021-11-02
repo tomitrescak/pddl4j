@@ -120,8 +120,6 @@ public final class EnforcedHillClimbing extends AbstractStateSpaceStrategy {
         return solution;
     }
 
-
-
     /**
      * Get the successors from a node.
      *
