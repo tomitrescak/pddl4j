@@ -160,10 +160,6 @@ public final class AStar extends AbstractStateSpaceStrategy {
         }
     }
 
-    public Node search(final CodedProblem codedProblem) {
-        return this.findSolution(codedProblem, 1).solutions.get(0);
-    }
-
     /**
      * Solves the planning problem and returns the first solution search found.
      *
@@ -190,7 +186,7 @@ public final class AStar extends AbstractStateSpaceStrategy {
         open.add(root);
         openSet.put(init, root);
 
-        int cores = 4; // Runtime.getRuntime().availableProcessors();
+        int cores = Runtime.getRuntime().availableProcessors();
 
         final ExecutorService executor = Executors.newFixedThreadPool(cores);
         final Solution checkSolution = new Solution();
@@ -225,6 +221,10 @@ public final class AStar extends AbstractStateSpaceStrategy {
 
         // return the search computed or null if no search was found
         return checkSolution;
+    }
+
+    public Node search(final CodedProblem codedProblem) {
+        return this.findSolution(codedProblem, 1).solutions.get(0);
     }
 
     @Override
