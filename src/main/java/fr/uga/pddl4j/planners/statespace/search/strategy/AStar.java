@@ -62,7 +62,7 @@ public final class AStar extends AbstractStateSpaceStrategy {
         super(timeout, heuristic, weight);
     }
 
-    private Node threadSearch(PriorityBlockingQueue<Node> open, ConcurrentHashMap<BitState, Node> openSet, ConcurrentHashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+    private Node threadSearch(PriorityQueue<Node> open, HashMap<BitState, Node> openSet, HashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
         Node current;
         current = open.poll();
 
@@ -135,7 +135,7 @@ public final class AStar extends AbstractStateSpaceStrategy {
         return null;
     }
 
-    private void threadSearch(ExecutorService executor, Solution solution, PriorityBlockingQueue<Node> open, ConcurrentHashMap<BitState, Node> openSet, ConcurrentHashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
+    private void threadSearch(ExecutorService executor, Solution solution, PriorityQueue<Node> open, HashMap<BitState, Node> openSet, HashMap<BitState, Node> closeSet, CodedProblem codedProblem, Heuristic heuristic) {
         try {
             executor.execute(() -> {
                 Node result = this.threadSearch(open, openSet, closeSet, codedProblem, heuristic);
@@ -173,17 +173,16 @@ public final class AStar extends AbstractStateSpaceStrategy {
         // Get the initial state from the planning problem
         final BitState init = new BitState(codedProblem.getInit());
         // Initialize the closed list of nodes (store the nodes explored)
-        final ConcurrentHashMap<BitState, Node> closeSet = new ConcurrentHashMap<>();
-        final ConcurrentHashMap<BitState, Node> openSet = new ConcurrentHashMap<>();
+        final HashMap<BitState, Node> closeSet = new HashMap<>();
+        final HashMap<BitState, Node> openSet = new HashMap<>();
         // Initialize the opened list (store the pending node)
         final double currWeight = getWeight();
         // The list stores the node ordered according to the A* (getFValue = g + h) function
-        final PriorityBlockingQueue<Node> open = new PriorityBlockingQueue<>(100, new NodeComparator(currWeight));
+
         // Creates the root node of the tree search
         final Node root = new Node(init, null, -1, 0,
                 heuristic.estimate(init, codedProblem.getGoal()));
         // Adds the root to the list of pending nodes
-        open.add(root);
         openSet.put(init, root);
 
         int cores = Runtime.getRuntime().availableProcessors();
@@ -199,6 +198,9 @@ public final class AStar extends AbstractStateSpaceStrategy {
         // Start of the search
 
         for (int i = 0; i < cores; i++) {
+            final PriorityQueue<Node> open = new PriorityQueue<>(100, new NodeComparator(currWeight));
+            open.add(root);
+
             this.threadSearch(executor, checkSolution, open, openSet, closeSet, codedProblem, heuristic);
         }
 

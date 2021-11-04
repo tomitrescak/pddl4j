@@ -1,0 +1,152 @@
+{
+  "concepts": [
+    {
+      "id": "truck-transport-from-to",
+      "parameters": [
+        "packageId",
+        "truckId",
+        "from",
+        "to"
+      ],
+      "illocution": "Truck delivery from ?from to ?to",
+      "start": "load-truck !packageId ?truckId ?from",
+      "plan": {
+        "sequence": [
+          "load-truck !packageId !truckId ?from",
+          "drive-Truck !truckId from to city",
+          "unload-truck !packageId !truckId ?to"
+        ]
+      },
+      "goal": "unload-truck !packageId ?truckId ?to",
+      "goalStrategy": "first"
+    },
+    {
+      "id": "truck-transport",
+      "parameters": [
+        "packageId"
+      ],
+      "bind": [
+        "truckId",
+        "from",
+        "to"
+      ],
+      "name": "Package Truck Transport",
+      "illocution": "Truck delivery from ?from to ?to",
+      "start": "load-truck !packageId ?truckId ?from",
+      "plan": {
+        "sequence": [
+          "truck-transport-from-to !packageId ?truckId ?from ?to"
+        ]
+      },
+      "goal": "unload-truck !packageId ?truckId ?to",
+      "goalStrategy": "first"
+    },
+    {
+      "id": "plane-transport",
+      "parameters": [
+        "packageId"
+      ],
+      "bind": [
+        "planeId"
+      ],
+      "start": "load-airplane !packageId ?planeId locationId",
+      "plan": {
+        "anyOf": [
+          {
+            "sequence": [
+              "load-airplane !packageId ?planeId location",
+              "fly-airplane ?planeId from to",
+              "unload-airplane !packageId ?planeId location"
+            ]
+          }
+        ]
+      },
+      "goal": "unload-airplane !packageId ?planeId ?placeId"
+    },
+    {
+      "id": "airport-unload-truck",
+      "parameters": [
+        "airportId"
+      ],
+      "goal": "unload-truck packageId truckId !airportId"
+    },
+    {
+      "parameters": [
+        "airportId"
+      ],
+      "id": "airport-load-truck",
+      "goal": "load-truck packageId truckId !airportId"
+    },
+    {
+      "parameters": [
+        "airportId"
+      ],
+      "id": "airport-load-airplane",
+      "goal": "load-airplane packageId planeId !airportId"
+    },
+    {
+      "parameters": [
+        "airportId"
+      ],
+      "id": "airport-unload-airplane",
+      "goal": "unload-airplane packageId planeId !airportId",
+      "bind": [
+        "packageId",
+        "planeId"
+      ],
+      "views": [
+        "package-delivery !packageId"
+      ]
+    },
+    {
+      "id": "airport-traffic",
+      "group": "Airport Traffic",
+      "bind": [
+        "airportId"
+      ],
+      "plan": {
+        "anyOf": [
+          "airport-load-airplane airportId",
+          "airport-unload-airplane airportId",
+          "airport-load-truck airportId",
+          "airport-unload-truck airportId"
+        ]
+      }
+    },
+    {
+      "id": "package-delivery-from-to",
+      "parameters": [
+        "packageId",
+        "from",
+        "to"
+      ],
+      "illocution": "Package delivery ?packageId from ?from to ?to",
+      "plan": {
+        "anyOf": [
+          "truck-transport !packageId",
+          "plane-transport !packageId"
+        ]
+      }
+    },
+    {
+      "id": "package-delivery",
+      "illocution": "Package Tracking",
+      "children": {
+        "start": "load-truck ?packageId truckId ?from",
+        "bind": [
+          "packageId",
+          "from",
+          "to"
+        ],
+        "goal": "unload-truck !packageId truckId ?to"
+      },
+      "views":  [
+          "package-delivery-from-to !packageId !from !to"
+      ],
+
+
+      "goalStrategy": "final"
+    }
+  ]
+}
+

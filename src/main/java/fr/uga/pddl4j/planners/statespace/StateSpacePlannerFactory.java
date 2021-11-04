@@ -544,6 +544,7 @@ public class StateSpacePlannerFactory implements Serializable {
 
             Plan plan = planner.search(pb);
 
+
 //                for (int i=0; i<plans.length; i++) {
 //                    plan = planner.search(pb);
 //
